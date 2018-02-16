@@ -14,20 +14,10 @@ fi
 _ssh_dir="$HOME/.ssh"
 
 # Set the path to the environment file if not set by another module.
-_ssh_agent_env="${_ssh_agent_env:-${TMPDIR:-/tmp}/ssh-agent-"$LOGNAME".env}"
+_ssh_agent_env="${_ssh_agent_env:-${TMPDIR:-/tmp}/ssh-agent.env.$UID}"
 
-# Due to the predictability of the env file, check the env file exists and is
-# owned by current EUID before trusting it.
-if [ -f "$_ssh_agent_env" -a ! -O "$_ssh_agent_env" ]; then
-  cat 1>&2 <<-EOF
-	ERROR: Cannot trust the SSH agent environment variables persistence
-	file because it is owned by another user.
-	The ssh-agent will not be started.
-	$_ssh_agent_env
-	EOF
-  unset _ssh_{dir,agent_env}
-  return 1
-fi
+# Set the path to the persistent authentication socket.
+_ssh_agent_sock="${TMPDIR:-/tmp}/ssh-agent.sock.$UID"
 
 # If a socket exists at SSH_AUTH_SOCK, assume ssh-agent is already running and
 # skip starting it.
@@ -45,15 +35,20 @@ fi
 # Load identities.
 if ssh-add -l 2>&1 | grep -q 'The agent has no identities'; then
   zstyle -a ':prezto:module:ssh:load' identities '_ssh_identities'
-  if (( ${#_ssh_identities} > 0 )); then
-    ssh-add "$_ssh_dir/${^_ssh_identities[@]}" 2> /dev/null
+  # ssh-add has strange requirements for running SSH_ASKPASS, so we duplicate
+  # them here. Essentially, if the other requirements are met, we redirect stdin
+  # from /dev/null in order to meet the final requirement.
+  #
+  # From ssh-add(1):
+  # If ssh-add needs a passphrase, it will read the passphrase from the current
+  # terminal if it was run from a terminal. If ssh-add does not have a terminal
+  # associated with it but DISPLAY and SSH_ASKPASS are set, it will execute the
+  # program specified by SSH_ASKPASS and open an X11 window to read the
+  # passphrase.
+  if [[ -n "$DISPLAY" && -x "$SSH_ASKPASS" ]]; then
+    ssh-add ${_ssh_identities:+$_ssh_dir/${^_ssh_identities[@]}} < /dev/null 2> /dev/null
   else
-    # In macOS, `ssh-add -A` will load all identities defined in Keychain
-    if [[ `uname -s` == 'Darwin' ]]; then
-      ssh-add -A 2> /dev/null
-    else
-      ssh-add 2> /dev/null
-    fi
+    ssh-add ${_ssh_identities:+$_ssh_dir/${^_ssh_identities[@]}} 2> /dev/null
   fi
 fi
 

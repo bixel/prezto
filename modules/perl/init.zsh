@@ -15,12 +15,12 @@ fi
 #
 
 # Load Perlbrew into the shell session.
-if [[ -s "${HOME}/perl5/perlbrew/etc/bashrc" ]]; then
-  source "${HOME}/perl5/perlbrew/etc/bashrc"
+if [[ -s "${PERLBREW_ROOT:-$HOME/perl5/perlbrew}/etc/bashrc" ]]; then
+  source "${PERLBREW_ROOT:-$HOME/perl5/perlbrew}/etc/bashrc"
 
   # Load Perlbrew completion.
-  if [[ -s "${HOME}/perl5/perlbrew/etc/perlbrew-completion.bash" ]]; then
-    source "${HOME}/perl5/perlbrew/etc/perlbrew-completion.bash"
+  if [[ -s "${PERLBREW_ROOT:-$HOME/perl5/perlbrew}/etc/perlbrew-completion.bash" ]]; then
+    source "${PERLBREW_ROOT:-$HOME/perl5/perlbrew}/etc/perlbrew-completion.bash"
   fi
 
 # Load manually installed plenv into the shell session.
@@ -39,7 +39,7 @@ fi
 
 if [[ "$OSTYPE" == darwin* ]]; then
   # Perl is slow; cache its output.
-  cache_file="${0:h}/cache.zsh"
+  cache_file="${TMPDIR:-/tmp}/prezto-perl-cache.$UID.zsh"
   perl_path="$HOME/Library/Perl/5.12"
 
   if [[ -f "$perl_path/lib/perl5/local/lib.pm" ]]; then
@@ -50,8 +50,7 @@ if [[ "$OSTYPE" == darwin* ]]; then
     source "$cache_file"
   fi
 
-  unset perl_path
-  unset cache_file
+  unset cache_file perl_path
 fi
 
 #
